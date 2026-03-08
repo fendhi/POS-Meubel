@@ -1,0 +1,92 @@
+-- Mabel POS schema (MySQL)
+
+SET sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+SET time_zone = '+07:00';
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  username VARCHAR(50) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_users_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS products (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  sku VARCHAR(50) NULL,
+  name VARCHAR(150) NOT NULL,
+  category VARCHAR(100) NULL,
+  unit VARCHAR(30) NOT NULL DEFAULT 'pcs',
+  cost_price DECIMAL(14,2) NOT NULL DEFAULT 0,
+  sell_price DECIMAL(14,2) NOT NULL DEFAULT 0,
+  stock INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_products_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  product_id INT UNSIGNED NOT NULL,
+  movement_date DATE NOT NULL,
+  type ENUM('in','adjust','out') NOT NULL,
+  qty INT NOT NULL,
+  cost_price DECIMAL(14,2) NOT NULL DEFAULT 0,
+  note VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_stock_movements_date (movement_date),
+  CONSTRAINT fk_stock_movements_product FOREIGN KEY (product_id) REFERENCES products(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sales (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  sale_date DATE NOT NULL,
+  customer_name VARCHAR(100) NULL,
+  note VARCHAR(255) NULL,
+  total DECIMAL(14,2) NOT NULL DEFAULT 0,
+  total_cost DECIMAL(14,2) NOT NULL DEFAULT 0,
+  gross_profit DECIMAL(14,2) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_sales_date (sale_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sale_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  sale_id INT UNSIGNED NOT NULL,
+  product_id INT UNSIGNED NOT NULL,
+  qty INT NOT NULL,
+  sell_price DECIMAL(14,2) NOT NULL,
+  cost_price DECIMAL(14,2) NOT NULL,
+  subtotal DECIMAL(14,2) NOT NULL,
+  cost_total DECIMAL(14,2) NOT NULL,
+  profit DECIMAL(14,2) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_sale_items_sale (sale_id),
+  CONSTRAINT fk_sale_items_sale FOREIGN KEY (sale_id) REFERENCES sales(id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_sale_items_product FOREIGN KEY (product_id) REFERENCES products(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS expenses (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  expense_date DATE NOT NULL,
+  category VARCHAR(100) NULL,
+  description VARCHAR(255) NOT NULL,
+  amount DECIMAL(14,2) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_expenses_date (expense_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Seed default admin if not exists
+INSERT INTO users (username, name, password_hash)
+SELECT 'admin', 'Administrator', '$2y$12$1S6m/SaE5kNHgMWudTAlVO.O8VtU62aGWKHTdCyPq/9puNuBMhCre'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
+-- password: admin
